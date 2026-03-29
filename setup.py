@@ -38,7 +38,39 @@ prepare_optimizer_input(
     output_path="data/optimizer_input.csv"
 )
 
+# ── AI Model Training ──────────────────────────────────────
 print("\n" + "=" * 55)
+print("  TRAINING AI MODELS...")
+print("=" * 55)
+
+import pandas as pd
+df = pd.read_csv("data/clean_data.csv")
+
+# AI Step 1: Train anomaly detector
+print("\n[AI 1/3] Training anomaly detector...")
+from src.ai_anomaly import train_anomaly_detector
+train_anomaly_detector()
+print("Anomaly detector ready!")
+
+# AI Step 2: Train demand forecast model
+print("\n[AI 2/3] Training demand forecast model...")
+from src.ai_forecast import train_forecast_model
+train_forecast_model(df["demand_mw"].tolist(), epochs=50)
+print("AI forecast model ready!")
+
+# AI Step 3: Train RL battery agent (optional — takes 5–10 mins)
+print("\n[AI 3/3] Training RL battery agent...")
+print("This takes 5-10 minutes. Skip with Ctrl+C if short on time.")
+try:
+    from src.ai_battery_rl import train_rl_agent
+    train_rl_agent(total_steps=50_000)
+    print("RL battery agent ready!")
+except KeyboardInterrupt:
+    print("RL training skipped.")
+
+# ── Done ───────────────────────────────────────────────────
+print("\n" + "=" * 55)
+print("  ✅ ALL AI MODELS READY!")
 print("  Setup complete! All data files generated.")
 print("  Now run:  streamlit run app.py")
 print("=" * 55)

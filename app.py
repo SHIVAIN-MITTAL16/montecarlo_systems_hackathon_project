@@ -10,8 +10,28 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import json, os, sys, time
+from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, "src")
+
+try:
+    from ai_chatbot import ask_grid_ai, check_ollama_running
+    CHATBOT_AVAILABLE = True
+except ImportError:
+    CHATBOT_AVAILABLE = False
+
+try:
+    from src.ai_anomaly import check_anomaly
+    ANOMALY_AVAILABLE = True
+except ImportError:
+    ANOMALY_AVAILABLE = False
+
+try:
+    from ai_report import generate_crisis_report
+    REPORT_AVAILABLE = True
+except ImportError:
+    REPORT_AVAILABLE = False
 
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -213,7 +233,7 @@ kpi(k6,"Saving / Hour",      f"${savings_hr/1e6:.1f}M","g",
 st.markdown("<div style='margin:.8rem 0'></div>", unsafe_allow_html=True)
 
 # ── Tabs ──────────────────────────────────────────────────────────────────────
-T1,T2,T3,T4,T5,T6,T7 = st.tabs([
+T1,T2,T3,T4,T5,T6,T7,T8 = st.tabs([
     "⚡  Live Simulation",
     "🔴  Texas Crisis Replay",
     "📊  Scenario Analysis",
@@ -221,6 +241,7 @@ T1,T2,T3,T4,T5,T6,T7 = st.tabs([
     "🔬  Statistical Deep Dive",
     "ℹ️   Methodology",
     "🇮🇳  India Gas Crisis",
+    "🤖  GridAI Assistant",
 ])
 
 # ════════════════════════════════════════════════════════════
@@ -302,6 +323,28 @@ with T1:
                             height=245, margin=dict(l=15,r=15,t=20,b=10))
         st.plotly_chart(fig_g, use_container_width=True)
         st.caption("Red threshold = baseline risk · Colored bar = optimal")
+
+        # ── AI Anomaly Detection ──────────────────────────────────────────────
+        st.markdown("<div class='sh'>AI Anomaly Detection</div>",
+                    unsafe_allow_html=True)
+        if ANOMALY_AVAILABLE:
+            is_anomaly, score, message = check_anomaly(
+                demand_mw=int(D["clean"]["demand_mw"].mean() * df_),
+                solar_mw=int(D["clean"]["solar_mw"].mean() * sf),
+                wind_mw=int(D["clean"]["wind_mw"].mean() * wf),
+            )
+            if is_anomaly:
+                st.error(f"🚨 AI ANOMALY ALERT!\n{message}")
+            else:
+                st.success(message)
+        else:
+            st.markdown("""
+            <div class='alert-a'>
+              <div style='font-size:12px;color:#886622;'>
+                ⚠️ <code>src/ai_anomaly.py</code> not found.<br>
+                Create it with a <code>check_anomaly()</code> function.
+              </div>
+            </div>""", unsafe_allow_html=True)
 
         st.markdown(f"""
         <div class='alert-g' style='margin-top:.8rem;'>
@@ -472,6 +515,47 @@ with T2:
             • Pre-position generators<br>
             • Issue conservation alerts<br>
             • Prevent 4.5M outages
+          </div>
+        </div>""", unsafe_allow_html=True)
+
+    # ── AI Crisis Report Generator ────────────────────────────────────────────
+    st.markdown("<div class='sh'>AI Crisis Report Generator</div>",
+                unsafe_allow_html=True)
+    if REPORT_AVAILABLE:
+        grid_data_crisis = {
+            "ews_score":        round((opt_risk_adj - 9.0) / 51.0 * 0.8 + 0.1, 2),
+            "demand_mw":        int(D["clean"]["demand_mw"].mean() * df_),
+            "risk":             "HIGH" if opt_risk_adj >= 30 else "MEDIUM" if opt_risk_adj >= 15 else "LOW",
+            "gas_price":        gas_price,
+            "carbon_tax":       carbon_tax,
+            "solar_drop_pct":   solar_drop,
+            "wind_drop_pct":    wind_drop,
+            "demand_spike_pct": demand_spike,
+            "blackout_risk":    round(opt_risk_adj, 1),
+            "baseline_risk":    round(bl_risk_adj, 1),
+            "cost_reduction":   round(cost_red_adj, 1),
+            "carbon_cut":       round(carbon_red_adj, 1),
+            "savings_per_hr":   f"${savings_hr/1e6:.1f}M",
+            "co2_saved_tph":    round(co2_saved, 0),
+            "scenarios_run":    n_sc,
+        }
+        st.markdown("### 📋 AI Crisis Report Generator")
+        if st.button("🔴 Generate Crisis Report Now"):
+            with st.spinner("AI is writing your report... (takes 10-20 seconds)"):
+                report = generate_crisis_report(grid_data_crisis)
+            st.text_area("Generated Report:", report, height=400)
+            st.download_button(
+                label="📥 Download Report",
+                data=report,
+                file_name=f"crisis_report_{datetime.now().strftime('%Y%m%d_%H%M')}.txt",
+                mime="text/plain",
+            )
+    else:
+        st.markdown("""
+        <div class='alert-a'>
+          <div style='font-size:12px;color:#886622;'>
+            ⚠️ <code>ai_report.py</code> not found.<br>
+            Create it with a <code>generate_crisis_report(grid_data)</code> function.
           </div>
         </div>""", unsafe_allow_html=True)
 
@@ -1236,3 +1320,173 @@ with T7:
         Watch India blackout risk climb to 90%+.
       </div>
     </div>""", unsafe_allow_html=True)
+
+# ════════════════════════════════════════════════════════════
+# TAB 8 — GRIDAI ASSISTANT (Ollama / Llama 3)
+# ════════════════════════════════════════════════════════════
+with T8:
+
+    st.markdown("""
+    <div style='background:linear-gradient(135deg,#08112a,#001830);
+                border:1px solid #0f2040;border-radius:16px;padding:1.2rem 1.5rem;
+                margin-bottom:1rem;'>
+      <div style='font-family:Syne,sans-serif;font-size:1.6rem;font-weight:800;
+                  background:linear-gradient(135deg,#00aaff,#00e5b0);
+                  -webkit-background-clip:text;-webkit-text-fill-color:transparent;'>
+        🤖 GridAI Assistant
+      </div>
+      <div style='font-size:13px;color:#3a5a8a;margin-top:5px;line-height:1.7;'>
+        Ask anything about the current grid state in plain English.
+        Powered by <strong style='color:#00aaff;'>Ollama + Llama 3</strong> — runs fully on your laptop, no API key needed.
+      </div>
+    </div>""", unsafe_allow_html=True)
+
+    # ── Status check ─────────────────────────────────────────────────────────
+    if not CHATBOT_AVAILABLE:
+        st.markdown("""
+        <div class='alert-a'>
+          <div style='font-size:13px;font-weight:700;color:#ffaa00;'>⚠️ ai_chatbot.py not found</div>
+          <div style='font-size:12px;color:#886622;margin-top:5px;line-height:1.8;'>
+            Create <code>src/ai_chatbot.py</code> with <code>ask_grid_ai()</code> and
+            <code>check_ollama_running()</code> functions.<br>
+            Then restart: <code>streamlit run app.py</code>
+          </div>
+        </div>""", unsafe_allow_html=True)
+    else:
+        ollama_ok = check_ollama_running()
+
+        if not ollama_ok:
+            st.markdown("""
+            <div class='alert-r'>
+              <div style='font-size:13px;font-weight:700;color:#ff3355;'>
+                🔴 Ollama is not running
+              </div>
+              <div style='font-size:12px;color:#994466;margin-top:5px;line-height:2;'>
+                Open a terminal and run:<br>
+                <code style='background:#0a0020;padding:3px 8px;border-radius:6px;color:#00aaff;'>
+                  ollama serve
+                </code>&nbsp;&nbsp;then&nbsp;&nbsp;
+                <code style='background:#0a0020;padding:3px 8px;border-radius:6px;color:#00e5b0;'>
+                  ollama pull llama3.1
+                </code>
+              </div>
+            </div>""", unsafe_allow_html=True)
+        else:
+            st.markdown("""
+            <div class='alert-g' style='margin-bottom:1rem;'>
+              <div style='font-size:12px;font-weight:700;color:#00e5b0;'>
+                ✅ GridAI is online — Ollama running
+              </div>
+            </div>""", unsafe_allow_html=True)
+
+        # ── Live grid context built from real sidebar variables ───────────────
+        ews_live   = round((opt_risk_adj - 9.0) / 51.0 * 0.8 + 0.1, 2)   # scale opt risk → 0–1
+        risk_label = "HIGH" if ews_live >= 0.60 else "MEDIUM" if ews_live >= 0.45 else "LOW"
+
+        grid_data = {
+            "ews_score":      ews_live,
+            "demand_mw":      int(D["clean"]["demand_mw"].mean() * df_),
+            "risk":           risk_label,
+            "gas_price":      gas_price,
+            "carbon_tax":     carbon_tax,
+            "solar_drop_pct": solar_drop,
+            "wind_drop_pct":  wind_drop,
+            "demand_spike_pct": demand_spike,
+            "blackout_risk":  round(opt_risk_adj, 1),
+            "baseline_risk":  round(bl_risk_adj, 1),
+            "cost_reduction": round(cost_red_adj, 1),
+            "carbon_cut":     round(carbon_red_adj, 1),
+            "savings_per_hr": f"${savings_hr/1e6:.1f}M",
+            "co2_saved_tph":  round(co2_saved, 0),
+            "scenarios_run":  n_sc,
+        }
+
+        # ── Live context display ──────────────────────────────────────────────
+        st.markdown("<div class='sh'>Current Grid Context (sent to GridAI automatically)</div>",
+                    unsafe_allow_html=True)
+
+        ctx_color = "#ff3355" if risk_label == "HIGH" else "#ffaa00" if risk_label == "MEDIUM" else "#00e5b0"
+        c1, c2, c3, c4 = st.columns(4)
+        for col, lbl, val, bar in [
+            (c1, "EWS Score",      str(ews_live),           "linear-gradient(90deg,#ffaa00,#ff7700)"),
+            (c2, "Risk Level",     risk_label,              f"linear-gradient(90deg,{ctx_color},{ctx_color}99)"),
+            (c3, "Blackout Risk",  f"{opt_risk_adj:.1f}%",  "linear-gradient(90deg,#ff3355,#cc1133)"),
+            (c4, "Gas Price",      f"${gas_price}/MWh",     "linear-gradient(90deg,#00aaff,#0066cc)"),
+        ]:
+            col.markdown(f"""<div class='mc'><div class='mc-bar' style='background:{bar};'></div>
+              <div class='mc-lbl'>{lbl}</div>
+              <div class='mc-val' style='font-size:1.4rem;color:{ctx_color if lbl=="Risk Level" else "#e2eeff"};'>{val}</div>
+            </div>""", unsafe_allow_html=True)
+
+        st.markdown("<div style='margin:.8rem 0'></div>", unsafe_allow_html=True)
+
+        # ── Quick question buttons ────────────────────────────────────────────
+        st.markdown("<div class='sh'>Quick Questions</div>", unsafe_allow_html=True)
+        q1, q2, q3, q4 = st.columns(4)
+
+        preset_q = ""
+        if q1.button("Why is risk HIGH?",        use_container_width=True):
+            preset_q = "Why is the grid at high risk right now?"
+        if q2.button("What should I do now?",    use_container_width=True):
+            preset_q = "What immediate actions should the grid operator take right now?"
+        if q3.button("Explain the EWS score",    use_container_width=True):
+            preset_q = "Explain the current Early Warning System score and what it means."
+        if q4.button("How to reduce costs?",     use_container_width=True):
+            preset_q = "How can we reduce grid operating costs given the current conditions?"
+
+        st.markdown("<div style='margin:.5rem 0'></div>", unsafe_allow_html=True)
+
+        # ── Free-text input ───────────────────────────────────────────────────
+        st.markdown("<div class='sh'>Ask GridAI Anything</div>", unsafe_allow_html=True)
+        user_question = st.text_input(
+            "Your question:",
+            value=preset_q,
+            placeholder="e.g. Why is risk HIGH right now? / What does EWS 0.67 mean? / Should I deploy battery storage?",
+            label_visibility="collapsed",
+        )
+
+        ask_col, _ = st.columns([1, 3])
+        ask_clicked = ask_col.button("⚡ Ask GridAI", use_container_width=True)
+
+        if (ask_clicked or preset_q) and user_question:
+            if not ollama_ok:
+                st.error("Cannot reach Ollama. Start it with: ollama serve")
+            else:
+                with st.spinner("GridAI is thinking…"):
+                    answer = ask_grid_ai(user_question, grid_data)
+
+                st.markdown(f"""
+                <div style='background:#08112a;border:1px solid #0f2040;border-left:3px solid #00aaff;
+                            border-radius:0 14px 14px 0;padding:1rem 1.3rem;margin-top:.8rem;'>
+                  <div style='font-size:10px;color:#3a5a8a;letter-spacing:1px;
+                              text-transform:uppercase;margin-bottom:6px;'>GridAI Response</div>
+                  <div style='font-size:14px;color:#c8dcff;line-height:1.8;'>{answer}</div>
+                </div>""", unsafe_allow_html=True)
+
+        # ── Chat history ──────────────────────────────────────────────────────
+        if "chat_history" not in st.session_state:
+            st.session_state.chat_history = []
+
+        if (ask_clicked or preset_q) and user_question and ollama_ok:
+            with st.spinner(""):
+                ans = ask_grid_ai(user_question, grid_data)
+            st.session_state.chat_history.append({"q": user_question, "a": ans})
+
+        if st.session_state.chat_history:
+            st.markdown("<div class='sh'>Conversation History</div>", unsafe_allow_html=True)
+            for item in reversed(st.session_state.chat_history[-5:]):
+                st.markdown(f"""
+                <div style='margin-bottom:10px;'>
+                  <div style='font-size:12px;color:#3a5a8a;padding:6px 10px;
+                              background:#050d1f;border-radius:8px 8px 0 0;'>
+                    🧑 {item["q"]}
+                  </div>
+                  <div style='font-size:13px;color:#c8dcff;padding:8px 12px;
+                              background:#08112a;border:1px solid #0f2040;
+                              border-radius:0 0 8px 8px;line-height:1.7;'>
+                    🤖 {item["a"]}
+                  </div>
+                </div>""", unsafe_allow_html=True)
+            if st.button("🗑 Clear history", use_container_width=False):
+                st.session_state.chat_history = []
+                st.rerun()
