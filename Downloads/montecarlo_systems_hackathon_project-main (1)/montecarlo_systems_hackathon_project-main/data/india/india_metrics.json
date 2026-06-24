@@ -1,0 +1,6 @@
+{
+  "country": "India Northern Grid",
+  "baseline_blackout_pct": 66.1,
+  "optimal_blackout_pct": 53.2,
+  "cost_reduction_pct": 9.6
+}
