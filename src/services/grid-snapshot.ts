@@ -1,7 +1,4 @@
-import {
-  getNationalGridSnapshot as getGridEngineSnapshot,
-  type GridState,
-} from "./grid-engine";
+import { getNationalGridSnapshot as getGridEngineSnapshot, type GridState } from "./grid-engine";
 import { calculateEnergyState } from "./energy-model";
 import { calculateDemandState } from "./demand-model";
 
@@ -91,9 +88,14 @@ function calculateNationalRenewableGeneration(states: readonly StateSnapshot[]):
 
 function calculateNationalReserveMargin(states: readonly StateSnapshot[]): number {
   const demandMw = calculateNationalDemand(states);
-  const availableSupplyMw = sum(states, (state) => state.energy.estimatedDemandMw + state.energy.supplyDemandGapMw);
+  const availableSupplyMw = sum(
+    states,
+    (state) => state.energy.estimatedDemandMw + state.energy.supplyDemandGapMw,
+  );
 
-  return demandMw > 0 ? roundPercent(((availableSupplyMw - demandMw) / demandMw) * SCORE_DENOMINATOR) : 0;
+  return demandMw > 0
+    ? roundPercent(((availableSupplyMw - demandMw) / demandMw) * SCORE_DENOMINATOR)
+    : 0;
 }
 
 function calculateNationalRenewablePenetration(states: readonly StateSnapshot[]): number {
@@ -107,7 +109,9 @@ function calculateNationalGridStressIndex(states: readonly StateSnapshot[]): num
   const demandMw = calculateNationalDemand(states);
   if (demandMw <= 0) return 0;
 
-  return toScore(sum(states, (state) => state.energy.gridStressIndex * state.demand.estimatedLoadMw) / demandMw);
+  return toScore(
+    sum(states, (state) => state.energy.gridStressIndex * state.demand.estimatedLoadMw) / demandMw,
+  );
 }
 
 function calculateAverageDemandConfidence(states: readonly StateSnapshot[]): number {
@@ -140,7 +144,11 @@ function summarizeRiskState(state: StateSnapshot): RiskStateSummary {
 function calculateSystemHealthScore(states: readonly StateSnapshot[]): number {
   const stressHealth = SCORE_DENOMINATOR - calculateNationalGridStressIndex(states);
   const confidenceHealth = calculateAverageDemandConfidence(states);
-  const reserveHealth = scaleToScore(calculateNationalReserveMargin(states), 0, HEALTH_RESERVE_TARGET_PERCENT);
+  const reserveHealth = scaleToScore(
+    calculateNationalReserveMargin(states),
+    0,
+    HEALTH_RESERVE_TARGET_PERCENT,
+  );
 
   return toScore(
     stressHealth * HEALTH_STRESS_WEIGHT +

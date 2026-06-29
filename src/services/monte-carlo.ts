@@ -113,10 +113,7 @@ function emptySimulationTotals(): SimulationTotals {
   return { supplyMw: 0, demandMw: 0, renewableGenerationMw: 0 };
 }
 
-function addStateSimulation(
-  total: SimulationTotals,
-  next: SimulationTotals,
-): SimulationTotals {
+function addStateSimulation(total: SimulationTotals, next: SimulationTotals): SimulationTotals {
   return {
     supplyMw: total.supplyMw + next.supplyMw,
     demandMw: total.demandMw + next.demandMw,
@@ -149,14 +146,18 @@ function aggregateResults(
     meanSupplyDemandGapMw: roundMw(mean(points, (point) => point.supplyDemandGapMw)),
     expectedRenewableGenerationMw: roundMw(mean(points, (point) => point.renewableGenerationMw)),
     demandPercentiles: calculatePercentiles(points.map((point) => point.demandMw)),
-    renewableGenerationPercentiles: calculatePercentiles(points.map((point) => point.renewableGenerationMw)),
+    renewableGenerationPercentiles: calculatePercentiles(
+      points.map((point) => point.renewableGenerationMw),
+    ),
     lossOfLoadProbability: roundPercent(calculateBlackoutProbability(points)),
     expectedUnservedEnergyMwh: roundMw(calculateExpectedUnservedEnergy(points)),
   };
 }
 
 function calculateBlackoutProbability(points: readonly SimulationPoint[]): number {
-  return (points.filter((point) => point.blackoutEvent).length / points.length) * PERCENT_DENOMINATOR;
+  return (
+    (points.filter((point) => point.blackoutEvent).length / points.length) * PERCENT_DENOMINATOR
+  );
 }
 
 function calculateExpectedUnservedEnergy(points: readonly SimulationPoint[]): number {
@@ -181,13 +182,21 @@ function readPercentile(sorted: readonly number[], percentile: number): number {
 
 // Demand uncertainty uses a truncated normal distribution around forecast load.
 function varyDemand(baseDemandMw: number, random: () => number): number {
-  const factor = truncatedNormalFactor(1, DEMAND_STD_DEV_RATIO, DEMAND_MIN_FACTOR, DEMAND_MAX_FACTOR, random);
+  const factor = truncatedNormalFactor(
+    1,
+    DEMAND_STD_DEV_RATIO,
+    DEMAND_MIN_FACTOR,
+    DEMAND_MAX_FACTOR,
+    random,
+  );
   return baseDemandMw * factor;
 }
 
 // Solar uncertainty uses a triangular distribution: cloud forecast errors are bounded and mode at forecast.
 function varySolar(baseSolarMw: number, random: () => number): number {
-  return baseSolarMw * triangularFactor(SOLAR_MIN_FACTOR, SOLAR_MODE_FACTOR, SOLAR_MAX_FACTOR, random);
+  return (
+    baseSolarMw * triangularFactor(SOLAR_MIN_FACTOR, SOLAR_MODE_FACTOR, SOLAR_MAX_FACTOR, random)
+  );
 }
 
 // Wind uncertainty uses a wider triangular distribution because wind ramp errors are asymmetric.
@@ -197,13 +206,21 @@ function varyWind(baseWindMw: number, random: () => number): number {
 
 // Battery uncertainty uses a tight triangular distribution for usable energy availability.
 function varyBatteryPower(baseBatteryMwh: number, random: () => number): number {
-  const batteryMwh = baseBatteryMwh * triangularFactor(BATTERY_MIN_FACTOR, BATTERY_MODE_FACTOR, BATTERY_MAX_FACTOR, random);
+  const batteryMwh =
+    baseBatteryMwh *
+    triangularFactor(BATTERY_MIN_FACTOR, BATTERY_MODE_FACTOR, BATTERY_MAX_FACTOR, random);
   return batteryMwh / BATTERY_DISCHARGE_DURATION_HOURS;
 }
 
 function calculateDispatchableSupply(state: StateSnapshot): number {
   const baselineBatteryMw = state.energy.batteryAvailableMwh / BATTERY_DISCHARGE_DURATION_HOURS;
-  return Math.max(0, state.energy.estimatedDemandMw + state.energy.supplyDemandGapMw - state.energy.netRenewableGenerationMw - baselineBatteryMw);
+  return Math.max(
+    0,
+    state.energy.estimatedDemandMw +
+      state.energy.supplyDemandGapMw -
+      state.energy.netRenewableGenerationMw -
+      baselineBatteryMw,
+  );
 }
 
 function calculateReserveMargin(gapMw: number, demandMw: number): number {
@@ -245,7 +262,9 @@ function createSeededRandom(seed: number): () => number {
 }
 
 function mean<T>(items: readonly T[], selector: (item: T) => number): number {
-  return items.length > 0 ? items.reduce((total, item) => total + selector(item), 0) / items.length : 0;
+  return items.length > 0
+    ? items.reduce((total, item) => total + selector(item), 0) / items.length
+    : 0;
 }
 
 function roundMw(value: number): number {

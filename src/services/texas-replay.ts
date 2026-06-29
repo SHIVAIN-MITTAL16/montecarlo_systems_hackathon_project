@@ -1,337 +1,309 @@
-import { getNationalGridSnapshot } from "./grid-snapshot";
-import { runMonteCarloSimulation } from "./monte-carlo";
-
-type NationalGridSnapshot = Awaited<ReturnType<typeof getNationalGridSnapshot>>;
-type StateSnapshot = NationalGridSnapshot["states"][number];
-type MonteCarloResult = ReturnType<typeof runMonteCarloSimulation>;
-
-const DEFAULT_REPLAY_SEED = 2_021;
-const DEFAULT_BLACKOUT_PROBABILITY_THRESHOLD = 50;
 const SCORE_DENOMINATOR = 100;
 const ROUND_MW_SCALE = 10;
 const ROUND_PERCENT_SCALE = 10;
-const SOLAR_HEAT_DERATE_START_C = 25;
-const SOLAR_HEAT_DERATE_END_C = 45;
-const SOLAR_HEAT_DERATE_MAX = 0.18;
-const WIND_CUT_IN_KMH = 10;
-const WIND_RATED_KMH = 45;
-const WIND_HIGH_DERATE_START_KMH = 70;
-const WIND_HIGH_DERATE_END_KMH = 100;
-const WIND_HIGH_DERATE_MAX = 0.7;
-const HYDRO_PRECIPITATION_UPLIFT_MAX = 0.2;
-const HYDRO_PRECIPITATION_FULL_MM = 20;
+const BLACKOUT_CERTAINTY_LOAD_SHED_MW = 10_000;
+const CRITICAL_SHORTAGE_RATIO = 0.18;
+const HIGH_STRESS_OUTAGE_MW = 45_000;
+const LOW_FREQUENCY_HZ = 59.7;
+const SIMULATION_INTERVAL_HOURS = 1;
 
-interface HistoricalWeatherRecord {
+export interface TexasReplayMetadata {
+  readonly eventName: string;
+  readonly timezone: string;
+  readonly resolution: string;
+  readonly sourceNotes: readonly string[];
+  readonly sources: readonly string[];
+  readonly missingDatasets?: readonly string[];
+}
+
+export interface TexasReplayRecord {
   readonly timestamp: string;
-  readonly temperatureCelsius: number;
-  readonly cloudCoverPercent: number;
-  readonly windSpeedKmh: number;
-  readonly precipitationMm: number;
+  readonly temperatureCelsius?: number;
+  readonly weatherStation?: string;
+  readonly windSpeedKmh?: number;
+  readonly precipitationMm?: number;
+  readonly demandMw?: number;
+  readonly generationMw?: number;
   readonly renewableGenerationMw?: number;
+  readonly forcedOutageMw?: number;
+  readonly frequencyHz?: number;
+  readonly loadShedMw?: number;
+  readonly majorEvent?: string;
+  readonly recommendation?: string;
+  readonly generationByFuel?: GenerationByFuel;
 }
 
-interface HistoricalDemandRecord {
+export interface GenerationByFuel {
+  readonly gasMw?: number;
+  readonly coalMw?: number;
+  readonly nuclearMw?: number;
+  readonly windMw?: number;
+  readonly solarMw?: number;
+  readonly hydroMw?: number;
+  readonly otherMw?: number;
+}
+
+export interface TexasReplayInput {
+  readonly metadata: TexasReplayMetadata;
+  readonly records: readonly TexasReplayRecord[];
+}
+
+export interface ReplayTimelinePoint {
   readonly timestamp: string;
-  readonly demandMw: number;
+  readonly temperatureCelsius?: number;
+  readonly weatherStation?: string;
+  readonly windSpeedKmh?: number;
+  readonly precipitationMm?: number;
+  readonly demandMw?: number;
+  readonly generationMw?: number;
+  readonly renewableGenerationMw?: number;
+  readonly forcedOutageMw?: number;
+  readonly reserveMarginPercent: number | null;
+  readonly lossOfLoadProbability: number | null;
+  readonly expectedUnservedEnergyMwh: number | null;
+  readonly blackoutProbability: number | null;
+  readonly systemStressIndex: number | null;
+  readonly frequencyHz?: number;
+  readonly loadShedMw?: number;
+  readonly predictedBlackout: boolean | null;
+  readonly majorEvent?: string;
+  readonly recommendation?: string;
+  readonly generationByFuel?: GenerationByFuel;
 }
 
-interface HistoricalGroundTruthRecord {
-  readonly timestamp: string;
-  readonly actualDemandMw?: number;
-  readonly actualRenewableGenerationMw?: number;
-  readonly blackoutEvent?: boolean;
+export interface ReplaySummaryStatistics {
+  readonly eventName: string;
+  readonly replayStart: string | null;
+  readonly replayEnd: string | null;
+  readonly replayStartTime: string | null;
+  readonly replayEndTime: string | null;
+  readonly replayDurationHours: number | null;
+  readonly timelineEventCount: number;
+  readonly peakDemandMw: number | null;
+  readonly minimumDemandMw: number | null;
+  readonly averageDemandMw: number | null;
+  readonly peakGenerationMw: number | null;
+  readonly minimumGenerationMw: number | null;
+  readonly averageGenerationMw: number | null;
+  readonly peakRenewableGenerationMw: number | null;
+  readonly minimumRenewableGenerationMw: number | null;
+  readonly averageRenewableGenerationMw: number | null;
+  readonly peakGenerationShortageMw: number | null;
+  readonly peakForcedOutageMw: number | null;
+  readonly peakLoadShedMw: number | null;
+  readonly maximumForcedOutageMw: number | null;
+  readonly maximumLoadShedMw: number | null;
+  readonly minimumReserveMarginPercent: number | null;
+  readonly maximumReserveMarginPercent: number | null;
+  readonly maximumBlackoutProbability: number | null;
+  readonly maximumExpectedUnservedEnergyMwh: number | null;
+  readonly worstEventTimestamp: string | null;
+  readonly totalExpectedUnservedEnergyMwh: number | null;
+  readonly blackoutHours: number;
+  readonly sourceNotes: readonly string[];
+  readonly sources: readonly string[];
 }
 
-interface TexasReplayInput {
-  readonly weather: readonly HistoricalWeatherRecord[];
-  readonly demand: readonly HistoricalDemandRecord[];
-  readonly groundTruth?: readonly HistoricalGroundTruthRecord[];
-  readonly simulations?: number;
-  readonly seed?: number;
-  readonly baseSnapshot?: NationalGridSnapshot;
-  readonly blackoutProbabilityThreshold?: number;
-}
-
-interface ReplayTimelinePoint {
-  readonly timestamp: string;
-  readonly blackoutProbability: number;
-  readonly reserveMargin: number;
-  readonly renewableGenerationMw: number;
-  readonly demandMw: number;
-  readonly lossOfLoadProbability: number;
-  readonly expectedUnservedEnergyMwh: number;
-  readonly predictedBlackout: boolean;
-}
-
-interface ReplaySummaryStatistics {
-  readonly meanPredictionError: number | null;
-  readonly peakDemandError: number | null;
-  readonly renewableError: number | null;
-  readonly blackoutDetectionAccuracy: number | null;
-}
-
-interface ReplayResult {
+export interface ReplayResult {
+  readonly metadata: TexasReplayMetadata;
   readonly timeline: readonly ReplayTimelinePoint[];
   readonly summary: ReplaySummaryStatistics;
 }
 
-interface TimestepInput {
-  readonly weather: HistoricalWeatherRecord;
-  readonly demand: HistoricalDemandRecord;
-  readonly groundTruth?: HistoricalGroundTruthRecord;
-}
-
 /**
- * Replays the Texas Winter Storm Uri sequence against the accepted snapshot and Monte Carlo pipeline.
+ * Replays Winter Storm Uri from Texas-only historical records.
  */
 export async function runTexas2021Replay(input: TexasReplayInput): Promise<ReplayResult> {
-  const baseSnapshot = input.baseSnapshot ?? await getNationalGridSnapshot();
-  const timesteps = buildChronologicalTimesteps(input);
-  const timeline = timesteps.map((timestep, index) =>
-    runReplayTimestep(baseSnapshot, timestep, input, index),
-  );
-
-  return {
-    timeline,
-    summary: calculateSummaryStatistics(timeline, timesteps),
-  };
-}
-
-function buildChronologicalTimesteps(input: TexasReplayInput): readonly TimestepInput[] {
-  const demandByTimestamp = toTimestampMap(input.demand);
-  const truthByTimestamp = toTimestampMap(input.groundTruth ?? []);
-
-  return [...input.weather]
+  const timeline = [...input.records]
     .sort((a, b) => a.timestamp.localeCompare(b.timestamp))
-    .flatMap((weather) => {
-      const demand = demandByTimestamp.get(weather.timestamp);
-      if (!demand) return [];
-      return [{ weather, demand, groundTruth: truthByTimestamp.get(weather.timestamp) }];
-    });
-}
-
-function runReplayTimestep(
-  baseSnapshot: NationalGridSnapshot,
-  timestep: TimestepInput,
-  input: TexasReplayInput,
-  index: number,
-): ReplayTimelinePoint {
-  const replaySnapshot = buildReplaySnapshot(baseSnapshot, timestep);
-  const monteCarlo = runMonteCarloSimulation(replaySnapshot, {
-    simulations: input.simulations,
-    seed: (input.seed ?? DEFAULT_REPLAY_SEED) + index,
-  });
-
-  return toTimelinePoint(timestep.weather.timestamp, replaySnapshot, monteCarlo, input);
-}
-
-function buildReplaySnapshot(
-  baseSnapshot: NationalGridSnapshot,
-  timestep: TimestepInput,
-): NationalGridSnapshot {
-  const states = baseSnapshot.states.map((state) => buildReplayState(state, baseSnapshot, timestep));
+    .map(toTimelinePoint);
 
   return {
-    ...baseSnapshot,
-    timestamp: timestep.weather.timestamp,
-    states,
-    nationalDemandMw: roundMw(timestep.demand.demandMw),
-    nationalRenewableGenerationMw: roundMw(sum(states, (state) => state.energy.netRenewableGenerationMw)),
-    nationalReserveMarginPercent: calculateNationalReserveMargin(states, timestep.demand.demandMw),
-    nationalRenewablePenetrationPercent: calculateRenewablePenetration(states, timestep.demand.demandMw),
-    nationalGridStressIndex: calculateNationalStress(states, timestep.demand.demandMw),
+    metadata: input.metadata,
+    timeline,
+    summary: calculateSummary(input.metadata, timeline),
   };
 }
 
-function buildReplayState(
-  state: StateSnapshot,
-  baseSnapshot: NationalGridSnapshot,
-  timestep: TimestepInput,
-): StateSnapshot {
-  const demandMw = allocateByWeight(timestep.demand.demandMw, state.demand.estimatedLoadMw, baseSnapshot.nationalDemandMw);
-  const energy = buildReplayEnergy(state, timestep.weather, demandMw);
-  const demand = { ...state.demand, estimatedLoadMw: roundMw(demandMw), peakLoadMw: Math.max(state.demand.peakLoadMw, roundMw(demandMw)) };
-
-  return { ...state, observedAt: timestep.weather.timestamp, energy, demand };
-}
-
-function buildReplayEnergy(
-  state: StateSnapshot,
-  weather: HistoricalWeatherRecord,
-  demandMw: number,
-): StateSnapshot["energy"] {
-  const solarGenerationMw = state.energy.solarGenerationMw * calculateSolarFactor(weather);
-  const windGenerationMw = state.energy.windGenerationMw * calculateWindFactor(weather.windSpeedKmh);
-  const hydroEstimateMw = state.energy.hydroEstimateMw * calculateHydroFactor(weather.precipitationMm);
-  const renewableGenerationMw = solarGenerationMw + windGenerationMw + hydroEstimateMw;
-  const gapMw = calculateReplayGap(state, demandMw, renewableGenerationMw);
+function toTimelinePoint(record: TexasReplayRecord): ReplayTimelinePoint {
+  const shortageMw = calculateShortageMw(record);
+  const reserveMarginPercent = calculateReserveMargin(record);
+  const lossOfLoadProbability = calculateLossOfLoadProbability(record, shortageMw);
+  const blackoutProbability = calculateBlackoutProbability(record, shortageMw);
+  const expectedUnservedEnergyMwh = shortageMw === null && record.loadShedMw === undefined
+    ? null
+    : roundMw(Math.max(shortageMw ?? 0, record.loadShedMw ?? 0) * SIMULATION_INTERVAL_HOURS);
 
   return {
-    ...state.energy,
-    observedAt: weather.timestamp,
-    solarGenerationMw: roundMw(solarGenerationMw),
-    windGenerationMw: roundMw(windGenerationMw),
-    hydroEstimateMw: roundMw(hydroEstimateMw),
-    estimatedDemandMw: roundMw(demandMw),
-    netRenewableGenerationMw: roundMw(renewableGenerationMw),
-    supplyDemandGapMw: roundMw(gapMw),
-    reserveMarginPercent: calculateReserveMargin(gapMw, demandMw),
-    renewablePenetrationPercent: roundPercent((renewableGenerationMw / demandMw) * SCORE_DENOMINATOR),
+    ...record,
+    reserveMarginPercent,
+    lossOfLoadProbability,
+    expectedUnservedEnergyMwh,
+    blackoutProbability,
+    systemStressIndex: calculateSystemStress(record, reserveMarginPercent, blackoutProbability),
+    predictedBlackout: blackoutProbability === null ? null : blackoutProbability >= 50,
   };
 }
 
-function calculateReplayGap(
-  state: StateSnapshot,
-  demandMw: number,
-  renewableGenerationMw: number,
-): number {
-  const baseDispatchableMw =
-    state.energy.estimatedDemandMw + state.energy.supplyDemandGapMw - state.energy.netRenewableGenerationMw;
-
-  return Math.max(0, baseDispatchableMw) + renewableGenerationMw - demandMw;
-}
-
-function toTimelinePoint(
-  timestamp: string,
-  snapshot: NationalGridSnapshot,
-  monteCarlo: MonteCarloResult,
-  input: TexasReplayInput,
-): ReplayTimelinePoint {
-  const threshold = input.blackoutProbabilityThreshold ?? DEFAULT_BLACKOUT_PROBABILITY_THRESHOLD;
-
-  return {
-    timestamp,
-    blackoutProbability: monteCarlo.blackoutProbability,
-    reserveMargin: monteCarlo.meanReserveMargin,
-    renewableGenerationMw: snapshot.nationalRenewableGenerationMw,
-    demandMw: snapshot.nationalDemandMw,
-    lossOfLoadProbability: monteCarlo.lossOfLoadProbability,
-    expectedUnservedEnergyMwh: monteCarlo.expectedUnservedEnergyMwh,
-    predictedBlackout: monteCarlo.blackoutProbability >= threshold,
-  };
-}
-
-function calculateSummaryStatistics(
+function calculateSummary(
+  metadata: TexasReplayMetadata,
   timeline: readonly ReplayTimelinePoint[],
-  timesteps: readonly TimestepInput[],
 ): ReplaySummaryStatistics {
+  const replayStart = timeline[0]?.timestamp ?? null;
+  const replayEnd = timeline.at(-1)?.timestamp ?? null;
+
   return {
-    meanPredictionError: calculateMeanPredictionError(timeline, timesteps),
-    peakDemandError: calculatePeakDemandError(timeline, timesteps),
-    renewableError: calculateRenewableError(timeline, timesteps),
-    blackoutDetectionAccuracy: calculateBlackoutAccuracy(timeline, timesteps),
+    eventName: metadata.eventName,
+    replayStart,
+    replayEnd,
+    replayStartTime: replayStart,
+    replayEndTime: replayEnd,
+    replayDurationHours: calculateReplayDurationHours(replayStart, replayEnd),
+    timelineEventCount: timeline.length,
+    peakDemandMw: maxValue(timeline, (point) => point.demandMw),
+    minimumDemandMw: minValue(timeline, (point) => point.demandMw),
+    averageDemandMw: averageValue(timeline, (point) => point.demandMw),
+    peakGenerationMw: maxValue(timeline, (point) => point.generationMw),
+    minimumGenerationMw: minValue(timeline, (point) => point.generationMw),
+    averageGenerationMw: averageValue(timeline, (point) => point.generationMw),
+    peakRenewableGenerationMw: maxValue(timeline, (point) => point.renewableGenerationMw),
+    minimumRenewableGenerationMw: minValue(timeline, (point) => point.renewableGenerationMw),
+    averageRenewableGenerationMw: averageValue(timeline, (point) => point.renewableGenerationMw),
+    peakGenerationShortageMw: maxValue(timeline, (point) => calculateShortageMw(point)),
+    peakForcedOutageMw: maxValue(timeline, (point) => point.forcedOutageMw),
+    peakLoadShedMw: maxValue(timeline, (point) => point.loadShedMw),
+    maximumForcedOutageMw: maxValue(timeline, (point) => point.forcedOutageMw),
+    maximumLoadShedMw: maxValue(timeline, (point) => point.loadShedMw),
+    minimumReserveMarginPercent: minValue(timeline, (point) => point.reserveMarginPercent),
+    maximumReserveMarginPercent: maxValue(timeline, (point) => point.reserveMarginPercent),
+    maximumBlackoutProbability: maxValue(timeline, (point) => point.blackoutProbability),
+    maximumExpectedUnservedEnergyMwh: maxValue(timeline, (point) => point.expectedUnservedEnergyMwh),
+    worstEventTimestamp: calculateWorstEventTimestamp(timeline),
+    totalExpectedUnservedEnergyMwh: sumNullable(timeline, (point) => point.expectedUnservedEnergyMwh),
+    blackoutHours: timeline.filter((point) => point.predictedBlackout).length,
+    sourceNotes: metadata.sourceNotes,
+    sources: metadata.sources,
   };
 }
 
-function calculateMeanPredictionError(
-  timeline: readonly ReplayTimelinePoint[],
-  timesteps: readonly TimestepInput[],
+function calculateShortageMw(record: Pick<TexasReplayRecord, "demandMw" | "generationMw">): number | null {
+  if (record.demandMw === undefined || record.generationMw === undefined) return null;
+  return Math.max(0, record.demandMw - record.generationMw);
+}
+
+function calculateReserveMargin(record: Pick<TexasReplayRecord, "demandMw" | "generationMw">): number | null {
+  if (record.demandMw === undefined || record.generationMw === undefined || record.demandMw <= 0) return null;
+  return roundPercent(((record.generationMw - record.demandMw) / record.demandMw) * SCORE_DENOMINATOR);
+}
+
+function calculateLossOfLoadProbability(
+  record: TexasReplayRecord,
+  shortageMw: number | null,
 ): number | null {
-  const errors = timeline.flatMap((point, index) => {
-    const actual = timesteps[index]?.groundTruth?.actualDemandMw;
-    return actual === undefined ? [] : [Math.abs(point.demandMw - actual)];
-  });
-
-  return errors.length > 0 ? roundMw(mean(errors)) : null;
+  if ((record.loadShedMw ?? 0) > 0) return SCORE_DENOMINATOR;
+  if (shortageMw === null || record.demandMw === undefined || record.demandMw <= 0) return null;
+  if (shortageMw <= 0) return 0;
+  return toScore((shortageMw / record.demandMw) / CRITICAL_SHORTAGE_RATIO);
 }
 
-function calculatePeakDemandError(
-  timeline: readonly ReplayTimelinePoint[],
-  timesteps: readonly TimestepInput[],
+function calculateBlackoutProbability(record: TexasReplayRecord, shortageMw: number | null): number | null {
+  const risks: number[] = [];
+  if (record.loadShedMw !== undefined) {
+    risks.push(scaleToScore(record.loadShedMw, 0, BLACKOUT_CERTAINTY_LOAD_SHED_MW));
+  }
+  if (shortageMw !== null && record.demandMw !== undefined && record.demandMw > 0) {
+    risks.push(toScore((shortageMw / record.demandMw) / CRITICAL_SHORTAGE_RATIO));
+  }
+  if (record.forcedOutageMw !== undefined) {
+    risks.push(scaleToScore(record.forcedOutageMw, 0, HIGH_STRESS_OUTAGE_MW));
+  }
+  if (record.frequencyHz !== undefined) {
+    risks.push(scaleToScore(60 - record.frequencyHz, 0, 60 - LOW_FREQUENCY_HZ));
+  }
+
+  return risks.length > 0 ? clampScore(Math.max(...risks)) : null;
+}
+
+function calculateSystemStress(
+  record: TexasReplayRecord,
+  reserveMarginPercent: number | null,
+  blackoutProbability: number | null,
 ): number | null {
-  const actualValues = timesteps.flatMap((item) => item.groundTruth?.actualDemandMw ?? []);
-  if (actualValues.length === 0 || timeline.length === 0) return null;
+  const stresses: number[] = [];
+  if (reserveMarginPercent !== null && reserveMarginPercent < 0) {
+    stresses.push(scaleToScore(Math.abs(reserveMarginPercent), 0, 35) * 0.35);
+  }
+  if (record.forcedOutageMw !== undefined) {
+    stresses.push(scaleToScore(record.forcedOutageMw, 0, HIGH_STRESS_OUTAGE_MW) * 0.25);
+  }
+  if (blackoutProbability !== null) {
+    stresses.push(blackoutProbability * 0.25);
+  }
+  if (record.frequencyHz !== undefined) {
+    stresses.push(scaleToScore(60 - record.frequencyHz, 0, 60 - LOW_FREQUENCY_HZ) * 0.15);
+  }
 
-  return roundMw(Math.max(...timeline.map((point) => point.demandMw)) - Math.max(...actualValues));
+  return stresses.length > 0 ? clampScore(stresses.reduce((total, value) => total + value, 0)) : null;
 }
 
-function calculateRenewableError(
-  timeline: readonly ReplayTimelinePoint[],
-  timesteps: readonly TimestepInput[],
-): number | null {
-  const errors = timeline.flatMap((point, index) => {
-    const actual = timesteps[index]?.groundTruth?.actualRenewableGenerationMw;
-    return actual === undefined ? [] : [Math.abs(point.renewableGenerationMw - actual)];
-  });
-
-  return errors.length > 0 ? roundMw(mean(errors)) : null;
+function maxValue<T>(items: readonly T[], selector: (item: T) => number | null | undefined): number | null {
+  const values = items.map(selector).filter((value): value is number => value !== null && value !== undefined);
+  return values.length > 0 ? Math.max(...values) : null;
 }
 
-function calculateBlackoutAccuracy(
-  timeline: readonly ReplayTimelinePoint[],
-  timesteps: readonly TimestepInput[],
-): number | null {
-  const comparisons = timeline.flatMap((point, index) => {
-    const actual = timesteps[index]?.groundTruth?.blackoutEvent;
-    return actual === undefined ? [] : [point.predictedBlackout === actual ? 1 : 0];
-  });
-
-  return comparisons.length > 0 ? roundPercent(mean(comparisons) * SCORE_DENOMINATOR) : null;
+function minValue<T>(items: readonly T[], selector: (item: T) => number | null | undefined): number | null {
+  const values = items.map(selector).filter((value): value is number => value !== null && value !== undefined);
+  return values.length > 0 ? Math.min(...values) : null;
 }
 
-function calculateSolarFactor(weather: HistoricalWeatherRecord): number {
-  const cloudFactor = 1 - clamp(weather.cloudCoverPercent, 0, SCORE_DENOMINATOR) / SCORE_DENOMINATOR;
-  const heatDerate = scaleToUnit(weather.temperatureCelsius, SOLAR_HEAT_DERATE_START_C, SOLAR_HEAT_DERATE_END_C) * SOLAR_HEAT_DERATE_MAX;
-
-  return clamp(cloudFactor * (1 - heatDerate), 0, 1);
+function sumNullable<T>(items: readonly T[], selector: (item: T) => number | null | undefined): number | null {
+  const values = items.map(selector).filter((value): value is number => value !== null && value !== undefined);
+  return values.length > 0 ? roundMw(values.reduce((total, value) => total + value, 0)) : null;
 }
 
-function calculateWindFactor(windSpeedKmh: number): number {
-  const ramp = scaleToUnit(windSpeedKmh, WIND_CUT_IN_KMH, WIND_RATED_KMH);
-  const derate = scaleToUnit(windSpeedKmh, WIND_HIGH_DERATE_START_KMH, WIND_HIGH_DERATE_END_KMH) * WIND_HIGH_DERATE_MAX;
-
-  return clamp(ramp * (1 - derate), 0, 1);
+function averageValue<T>(items: readonly T[], selector: (item: T) => number | null | undefined): number | null {
+  const values = items.map(selector).filter((value): value is number => value !== null && value !== undefined);
+  if (values.length === 0) return null;
+  return roundMw(values.reduce((total, value) => total + value, 0) / values.length);
 }
 
-function calculateHydroFactor(precipitationMm: number): number {
-  const uplift = scaleToUnit(precipitationMm, 0, HYDRO_PRECIPITATION_FULL_MM) * HYDRO_PRECIPITATION_UPLIFT_MAX;
-
-  return 1 + uplift;
+function calculateReplayDurationHours(start: string | null, end: string | null): number | null {
+  if (!start || !end) return null;
+  const startMs = Date.parse(start);
+  const endMs = Date.parse(end);
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs < startMs) return null;
+  return roundHours((endMs - startMs) / 3_600_000);
 }
 
-function calculateNationalReserveMargin(
-  states: readonly StateSnapshot[],
-  demandMw: number,
-): number {
-  const supplyMw = sum(states, (state) => state.energy.estimatedDemandMw + state.energy.supplyDemandGapMw);
+function calculateWorstEventTimestamp(timeline: readonly ReplayTimelinePoint[]): string | null {
+  const worst = timeline.reduce<ReplayTimelinePoint | null>((currentWorst, point) => {
+    if (!currentWorst) return point;
+    return calculateWorstEventScore(point) > calculateWorstEventScore(currentWorst)
+      ? point
+      : currentWorst;
+  }, null);
 
-  return calculateReserveMargin(supplyMw - demandMw, demandMw);
+  return worst?.timestamp ?? null;
 }
 
-function calculateRenewablePenetration(states: readonly StateSnapshot[], demandMw: number): number {
-  const renewableMw = sum(states, (state) => state.energy.netRenewableGenerationMw);
-
-  return demandMw > 0 ? roundPercent((renewableMw / demandMw) * SCORE_DENOMINATOR) : 0;
+function calculateWorstEventScore(point: ReplayTimelinePoint): number {
+  const blackout = point.blackoutProbability ?? 0;
+  const unserved = point.expectedUnservedEnergyMwh ?? 0;
+  const reserveStress = point.reserveMarginPercent === null ? 0 : Math.max(0, -point.reserveMarginPercent);
+  return blackout * 1_000_000 + unserved * 100 + reserveStress;
 }
 
-function calculateNationalStress(states: readonly StateSnapshot[], demandMw: number): number {
-  if (demandMw <= 0) return 0;
-  return toScore(sum(states, (state) => state.energy.gridStressIndex * state.demand.estimatedLoadMw) / demandMw);
-}
-
-function calculateReserveMargin(gapMw: number, demandMw: number): number {
-  return demandMw > 0 ? roundPercent((gapMw / demandMw) * SCORE_DENOMINATOR) : 0;
-}
-
-function allocateByWeight(total: number, weight: number, totalWeight: number): number {
-  return totalWeight > 0 ? total * (weight / totalWeight) : 0;
-}
-
-function toTimestampMap<T extends { readonly timestamp: string }>(items: readonly T[]): Map<string, T> {
-  return new Map(items.map((item) => [item.timestamp, item]));
-}
-
-function sum<T>(items: readonly T[], selector: (item: T) => number): number {
-  return items.reduce((total, item) => total + selector(item), 0);
-}
-
-function mean(values: readonly number[]): number {
-  return values.length > 0 ? values.reduce((total, value) => total + value, 0) / values.length : 0;
-}
-
-function scaleToUnit(value: number, min: number, max: number): number {
+function scaleToScore(value: number, min: number, max: number): number {
   if (max <= min) return 0;
-  return clamp((value - min) / (max - min), 0, 1);
+  return toScore((value - min) / (max - min));
+}
+
+function toScore(value: number): number {
+  return Math.round(clamp(value, 0, 1) * SCORE_DENOMINATOR);
+}
+
+function clampScore(value: number): number {
+  return Math.round(clamp(value, 0, SCORE_DENOMINATOR));
 }
 
 function roundMw(value: number): number {
@@ -342,8 +314,8 @@ function roundPercent(value: number): number {
   return Math.round(value * ROUND_PERCENT_SCALE) / ROUND_PERCENT_SCALE;
 }
 
-function toScore(value: number): number {
-  return Math.round(clamp(value, 0, SCORE_DENOMINATOR));
+function roundHours(value: number): number {
+  return Math.round(value * ROUND_PERCENT_SCALE) / ROUND_PERCENT_SCALE;
 }
 
 function clamp(value: number, min: number, max: number): number {

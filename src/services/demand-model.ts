@@ -120,7 +120,9 @@ function calculateEstimatedLoad(energyState: EnergyState, context: DemandContext
 
 // Peak load estimates the reachable daily maximum above current estimated load.
 function calculatePeakLoad(estimatedLoadMw: number, context: DemandContext): number {
-  const peakFactor = context.isPeakHour ? PEAK_LOAD_HEADROOM_FACTOR : PEAK_LOAD_HEADROOM_FACTOR + 0.07;
+  const peakFactor = context.isPeakHour
+    ? PEAK_LOAD_HEADROOM_FACTOR
+    : PEAK_LOAD_HEADROOM_FACTOR + 0.07;
 
   return roundMw(estimatedLoadMw * peakFactor);
 }
@@ -132,7 +134,11 @@ function calculateBaseLoad(estimatedLoadMw: number): number {
 
 // Cooling multiplier uses EnergyState's weather-influenced demand and stress index as heat proxy.
 function calculateCoolingDemandMultiplier(energyState: EnergyState): number {
-  const stressRatio = scaleToUnit(energyState.gridStressIndex, WEATHER_NEUTRAL_STRESS_INDEX, HIGH_STRESS_INDEX);
+  const stressRatio = scaleToUnit(
+    energyState.gridStressIndex,
+    WEATHER_NEUTRAL_STRESS_INDEX,
+    HIGH_STRESS_INDEX,
+  );
   const reservePressure =
     1 - scaleToUnit(energyState.reserveMarginPercent, 0, RESERVE_PRESSURE_HEALTHY_MARGIN_PERCENT);
 
@@ -152,7 +158,9 @@ function calculateHeatingDemandMultiplier(energyState: EnergyState): number {
 }
 
 function calculateSectorMix(context: DemandContext) {
-  const industrialShift = context.isWeekend ? -WEEKDAY_INDUSTRIAL_SHIFT_PERCENT : WEEKDAY_INDUSTRIAL_SHIFT_PERCENT;
+  const industrialShift = context.isWeekend
+    ? -WEEKDAY_INDUSTRIAL_SHIFT_PERCENT
+    : WEEKDAY_INDUSTRIAL_SHIFT_PERCENT;
   const residentialShift =
     (context.isWeekend ? WEEKEND_RESIDENTIAL_SHIFT_PERCENT : 0) +
     (context.isPeakHour ? PEAK_RESIDENTIAL_SHIFT_PERCENT : 0);
@@ -164,7 +172,10 @@ function calculateSectorMix(context: DemandContext) {
 
 // Sector percentages are normalized so industrial, residential, and commercial sum to 100.
 function normalizeSectorMix(industrial: number, residential: number) {
-  const commercial = DEFAULT_COMMERCIAL_LOAD_PERCENT - (industrial - DEFAULT_INDUSTRIAL_LOAD_PERCENT) - (residential - DEFAULT_RESIDENTIAL_LOAD_PERCENT);
+  const commercial =
+    DEFAULT_COMMERCIAL_LOAD_PERCENT -
+    (industrial - DEFAULT_INDUSTRIAL_LOAD_PERCENT) -
+    (residential - DEFAULT_RESIDENTIAL_LOAD_PERCENT);
 
   return {
     industrialLoadPercent: roundPercent(industrial),
@@ -180,7 +191,8 @@ function calculatePeakProbability(energyState: EnergyState, context: DemandConte
     : PEAK_PROBABILITY_NON_PEAK_TIME_WEIGHT;
   const stressSignal = scoreToRatio(energyState.gridStressIndex) * PEAK_PROBABILITY_STRESS_WEIGHT;
   const reserveSignal =
-    (1 - scaleToUnit(energyState.reserveMarginPercent, 0, RESERVE_PRESSURE_HEALTHY_MARGIN_PERCENT)) *
+    (1 -
+      scaleToUnit(energyState.reserveMarginPercent, 0, RESERVE_PRESSURE_HEALTHY_MARGIN_PERCENT)) *
     PEAK_PROBABILITY_RESERVE_WEIGHT;
 
   return toScore((timeSignal + stressSignal + reserveSignal) * SCORE_DENOMINATOR);
@@ -198,7 +210,8 @@ function calculateDemandConfidenceScore(energyState: EnergyState): number {
 
 function calculateTimeOfDayFactor(hour: number): number {
   if (isWithinPeakWindow(hour)) return PEAK_TIME_DEMAND_FACTOR;
-  if (hour < MORNING_PEAK_START_HOUR || hour >= EVENING_PEAK_END_HOUR) return OFF_PEAK_DEMAND_FACTOR;
+  if (hour < MORNING_PEAK_START_HOUR || hour >= EVENING_PEAK_END_HOUR)
+    return OFF_PEAK_DEMAND_FACTOR;
   return NORMAL_TIME_DEMAND_FACTOR;
 }
 

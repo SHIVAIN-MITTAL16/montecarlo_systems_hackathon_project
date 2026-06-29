@@ -19,7 +19,12 @@ interface Props {
   interactive?: boolean;
 }
 
-export function IndiaMap({ data = STATES, height = 640, showLabels = true, interactive = true }: Props) {
+export function IndiaMap({
+  data = STATES,
+  height = 640,
+  showLabels = true,
+  interactive = true,
+}: Props) {
   const [hover, setHover] = useState<StateData | null>(null);
 
   return (
@@ -84,23 +89,39 @@ export function IndiaMap({ data = STATES, height = 640, showLabels = true, inter
 
         {/* Transmission links between high-load states — live power flows */}
         {[
-          ["DL", "UP"], ["DL", "HR"], ["DL", "PB"], ["UP", "BR"], ["BR", "WB"],
-          ["MH", "GJ"], ["MH", "MP"], ["MH", "KA"], ["KA", "TN"], ["KA", "AP"],
-          ["AP", "TS"], ["TS", "MP"], ["RJ", "GJ"], ["RJ", "MP"], ["MP", "UP"],
-          ["WB", "OD"], ["OD", "AP"], ["TN", "KL"],
+          ["DL", "UP"],
+          ["DL", "HR"],
+          ["DL", "PB"],
+          ["UP", "BR"],
+          ["BR", "WB"],
+          ["MH", "GJ"],
+          ["MH", "MP"],
+          ["MH", "KA"],
+          ["KA", "TN"],
+          ["KA", "AP"],
+          ["AP", "TS"],
+          ["TS", "MP"],
+          ["RJ", "GJ"],
+          ["RJ", "MP"],
+          ["MP", "UP"],
+          ["WB", "OD"],
+          ["OD", "AP"],
+          ["TN", "KL"],
         ].map(([a, b], i) => {
           const sa = data.find((s) => s.id === a);
           const sb = data.find((s) => s.id === b);
           if (!sa || !sb) return null;
           // Flow direction: from lower-risk (surplus) to higher-risk (deficit)
           const fromSurplus = sa.risk <= sb.risk ? sa : sb;
-          const toDeficit   = sa.risk <= sb.risk ? sb : sa;
+          const toDeficit = sa.risk <= sb.risk ? sb : sa;
           const load = Math.min(1, (sa.demand + sb.demand) / 50);
           const stress = Math.max(sa.risk, sb.risk);
           const flowColor =
-            stress >= 70 ? "oklch(0.68 0.24 25)" :
-            stress >= 45 ? "oklch(0.82 0.17 75)" :
-            "oklch(0.85 0.21 145)";
+            stress >= 70
+              ? "oklch(0.68 0.24 25)"
+              : stress >= 45
+                ? "oklch(0.82 0.17 75)"
+                : "oklch(0.85 0.21 145)";
           const pathD = `M${fromSurplus.x},${fromSurplus.y} L${toDeficit.x},${toDeficit.y}`;
           const dur = 3 + (1 - load) * 4; // higher load = faster photons
           return (
@@ -113,14 +134,28 @@ export function IndiaMap({ data = STATES, height = 640, showLabels = true, inter
                 opacity={0.4 + load * 0.4}
               />
               {/* power-flow photon — directional */}
-              <circle r={1.2 + load * 1.2} fill={flowColor} opacity="0.95"
-                style={{ filter: `drop-shadow(0 0 4px ${flowColor})` }}>
+              <circle
+                r={1.2 + load * 1.2}
+                fill={flowColor}
+                opacity="0.95"
+                style={{ filter: `drop-shadow(0 0 4px ${flowColor})` }}
+              >
                 <animateMotion dur={`${dur}s`} repeatCount="indefinite" path={pathD} />
-                <animate attributeName="opacity" values="0;1;1;0" dur={`${dur}s`} repeatCount="indefinite" />
+                <animate
+                  attributeName="opacity"
+                  values="0;1;1;0"
+                  dur={`${dur}s`}
+                  repeatCount="indefinite"
+                />
               </circle>
               {load > 0.5 && (
                 <circle r="0.8" fill="oklch(1 0 0)" opacity="0.9">
-                  <animateMotion dur={`${dur}s`} begin={`${dur / 2}s`} repeatCount="indefinite" path={pathD} />
+                  <animateMotion
+                    dur={`${dur}s`}
+                    begin={`${dur / 2}s`}
+                    repeatCount="indefinite"
+                    path={pathD}
+                  />
                 </circle>
               )}
             </g>
@@ -210,7 +245,10 @@ export function IndiaMap({ data = STATES, height = 640, showLabels = true, inter
             <Row k="Renewable" v={`${hover.renewable.toFixed(1)} GW`} />
             <Row k="Battery" v={`${hover.battery}%`} />
             <Row k="Blackout P" v={`${hover.blackout}%`} />
-            <Row k="Grid" v={hover.risk >= 70 ? "STRESS" : hover.risk >= 45 ? "WATCH" : "NOMINAL"} />
+            <Row
+              k="Grid"
+              v={hover.risk >= 70 ? "STRESS" : hover.risk >= 45 ? "WATCH" : "NOMINAL"}
+            />
           </div>
           <div className="mt-3 pt-3 border-t border-[oklch(0.72_0.18_245/0.18)]">
             <div className="hud-label mb-1">AI Recommendation</div>
@@ -245,7 +283,10 @@ function Row({ k, v }: { k: string; v: string }) {
 function LegendDot({ color, label }: { color: string; label: string }) {
   return (
     <span className="flex items-center gap-1.5">
-      <span className="w-2 h-2 rounded-full" style={{ background: color, boxShadow: `0 0 8px ${color}` }} />
+      <span
+        className="w-2 h-2 rounded-full"
+        style={{ background: color, boxShadow: `0 0 8px ${color}` }}
+      />
       {label}
     </span>
   );

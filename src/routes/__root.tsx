@@ -79,16 +79,36 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Grid Sentinel AI — National Grid Intelligence" },
-      { name: "description", content: "AI-powered National Grid Digital Twin. Predict, simulate, optimize, and prevent blackouts before they occur." },
+      {
+        name: "description",
+        content:
+          "AI-powered National Grid Digital Twin. Predict, simulate, optimize, and prevent blackouts before they occur.",
+      },
       { name: "author", content: "Grid Sentinel" },
       { property: "og:title", content: "Grid Sentinel AI — National Grid Intelligence" },
-      { property: "og:description", content: "AI-powered National Grid Digital Twin. Predict, simulate, optimize, and prevent blackouts before they occur." },
+      {
+        property: "og:description",
+        content:
+          "AI-powered National Grid Digital Twin. Predict, simulate, optimize, and prevent blackouts before they occur.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "Grid Sentinel AI — National Grid Intelligence" },
-      { name: "twitter:description", content: "AI-powered National Grid Digital Twin. Predict, simulate, optimize, and prevent blackouts before they occur." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/f3aa931a-51a1-4c93-8c9d-7da55cefefc0/id-preview-3b484c2d--1b1c6380-a17d-4fca-8a35-9b459cf05f15.lovable.app-1782363411117.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/f3aa931a-51a1-4c93-8c9d-7da55cefefc0/id-preview-3b484c2d--1b1c6380-a17d-4fca-8a35-9b459cf05f15.lovable.app-1782363411117.png" },
+      {
+        name: "twitter:description",
+        content:
+          "AI-powered National Grid Digital Twin. Predict, simulate, optimize, and prevent blackouts before they occur.",
+      },
+      {
+        property: "og:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/f3aa931a-51a1-4c93-8c9d-7da55cefefc0/id-preview-3b484c2d--1b1c6380-a17d-4fca-8a35-9b459cf05f15.lovable.app-1782363411117.png",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/f3aa931a-51a1-4c93-8c9d-7da55cefefc0/id-preview-3b484c2d--1b1c6380-a17d-4fca-8a35-9b459cf05f15.lovable.app-1782363411117.png",
+      },
     ],
     links: [
       { rel: "stylesheet", href: appCss },

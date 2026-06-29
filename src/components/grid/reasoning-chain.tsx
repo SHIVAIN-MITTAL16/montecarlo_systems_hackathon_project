@@ -20,18 +20,24 @@ interface Props {
 }
 
 const TREND = {
-  up:       { c: "oklch(0.68 0.24 25)",  glyph: "↑", word: "increasing" },
-  down:     { c: "oklch(0.82 0.17 75)",  glyph: "↓", word: "decreasing" },
-  stable:   { c: "oklch(0.82 0.14 200)", glyph: "→", word: "stable"     },
-  action:   { c: "oklch(0.72 0.18 245)", glyph: "◆", word: "action"     },
-  resolved: { c: "oklch(0.85 0.21 145)", glyph: "✓", word: "resolved"   },
+  up: { c: "oklch(0.68 0.24 25)", glyph: "↑", word: "increasing" },
+  down: { c: "oklch(0.82 0.17 75)", glyph: "↓", word: "decreasing" },
+  stable: { c: "oklch(0.82 0.14 200)", glyph: "→", word: "stable" },
+  action: { c: "oklch(0.72 0.18 245)", glyph: "◆", word: "action" },
+  resolved: { c: "oklch(0.85 0.21 145)", glyph: "✓", word: "resolved" },
 } as const;
 
 /**
  * ReasoningChain — exposes Sentinel's engineering logic step by step.
  * Designed for trust: operators see *why* the AI recommended what it did.
  */
-export function ReasoningChain({ title = "AI reasoning chain", steps, conclusion, meta, className = "" }: Props) {
+export function ReasoningChain({
+  title = "AI reasoning chain",
+  steps,
+  conclusion,
+  meta,
+  className = "",
+}: Props) {
   return (
     <div className={className}>
       <div className="flex items-baseline justify-between mb-5">
@@ -69,9 +75,7 @@ export function ReasoningChain({ title = "AI reasoning chain", steps, conclusion
                 {t.glyph}
               </span>
               <div className="flex items-baseline justify-between gap-4">
-                <div className="text-sm md:text-[15px] font-display leading-snug">
-                  {s.signal}
-                </div>
+                <div className="text-sm md:text-[15px] font-display leading-snug">{s.signal}</div>
                 <div
                   className="font-mono text-[10px] tabular-nums whitespace-nowrap"
                   style={{ color: t.c }}
@@ -85,9 +89,7 @@ export function ReasoningChain({ title = "AI reasoning chain", steps, conclusion
       </ol>
 
       {conclusion && (
-        <div className="mt-6 pt-5 border-t border-[oklch(0.72_0.18_245/0.15)]">
-          {conclusion}
-        </div>
+        <div className="mt-6 pt-5 border-t border-[oklch(0.72_0.18_245/0.15)]">{conclusion}</div>
       )}
     </div>
   );

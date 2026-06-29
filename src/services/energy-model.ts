@@ -113,8 +113,7 @@ function calculateHydroEstimate(gridState: GridState): number {
 // Available battery energy is reduced by high heat and storms, which affect usable reserve.
 function calculateBatteryAvailable(gridState: GridState): number {
   const heatDerate = scoreToRatio(gridState.metrics.heatStress) * BATTERY_HEAT_DERATE_MAX;
-  const stormDerate =
-    scoreToRatio(gridState.metrics.stormRisk) * BATTERY_STORM_RESERVE_DERATE_MAX;
+  const stormDerate = scoreToRatio(gridState.metrics.stormRisk) * BATTERY_STORM_RESERVE_DERATE_MAX;
 
   return roundMwh(DEFAULT_BATTERY_CAPACITY_MWH * (1 - heatDerate - stormDerate));
 }
@@ -170,7 +169,9 @@ function calculateGridStressIndex(
   reserveMarginPercent: number,
 ): number {
   const deficitStress =
-    supplyDemandGapMw < 0 ? scaleToUnit(Math.abs(supplyDemandGapMw), 0, DEFICIT_STRESS_FULL_SCALE_MW) : 0;
+    supplyDemandGapMw < 0
+      ? scaleToUnit(Math.abs(supplyDemandGapMw), 0, DEFICIT_STRESS_FULL_SCALE_MW)
+      : 0;
   const reserveStress = 1 - scaleToUnit(reserveMarginPercent, 0, HEALTHY_RESERVE_MARGIN_PERCENT);
   const weatherStress = scoreToRatio(gridState.metrics.heatStress) * GRID_STRESS_HEAT_WEIGHT;
   const stormStress = scoreToRatio(gridState.metrics.stormRisk) * GRID_STRESS_STORM_WEIGHT;

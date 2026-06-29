@@ -6,7 +6,11 @@ interface Props {
 }
 
 const RISK_MAP: Record<string, number> = {
-  "Now": 41, "+6h": 58, "+12h": 72, "+24h": 64, "+48h": 47,
+  Now: 41,
+  "+6h": 58,
+  "+12h": 72,
+  "+24h": 64,
+  "+48h": 47,
 };
 
 export function ForecastTimeline({ value, onChange }: Props) {
@@ -25,7 +29,9 @@ export function ForecastTimeline({ value, onChange }: Props) {
         <div className="absolute left-0 right-0 top-1/2 h-px bg-[oklch(0.72_0.18_245/0.2)]" />
         <div
           className="absolute left-0 top-1/2 h-px bg-[oklch(0.72_0.18_245)] shadow-[0_0_8px_oklch(0.72_0.18_245)]"
-          style={{ width: `${(FORECAST_HORIZONS.indexOf(value as never) / (FORECAST_HORIZONS.length - 1)) * 100}%` }}
+          style={{
+            width: `${(FORECAST_HORIZONS.indexOf(value as never) / (FORECAST_HORIZONS.length - 1)) * 100}%`,
+          }}
         />
         <div className="relative flex justify-between">
           {FORECAST_HORIZONS.map((h) => {
@@ -43,7 +49,9 @@ export function ForecastTimeline({ value, onChange }: Props) {
                       : "bg-[oklch(0.14_0.025_260)] border-[oklch(0.72_0.18_245/0.5)] group-hover:border-[oklch(0.72_0.18_245)]"
                   }`}
                 />
-                <span className={`font-mono text-[11px] ${active ? "text-[oklch(0.72_0.18_245)]" : "text-muted-foreground"}`}>
+                <span
+                  className={`font-mono text-[11px] ${active ? "text-[oklch(0.72_0.18_245)]" : "text-muted-foreground"}`}
+                >
                   {h}
                 </span>
                 <span className="text-[10px] font-mono text-muted-foreground">{RISK_MAP[h]}</span>

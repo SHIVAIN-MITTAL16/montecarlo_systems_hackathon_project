@@ -213,7 +213,9 @@ function parseOpenMeteoResponse(
   capital: IndianStateCapital,
 ): CapitalWeatherData {
   if (!payload.current || !payload.hourly) {
-    throw new WeatherServiceError(`Open-Meteo response is missing weather data for ${capital.capital}`);
+    throw new WeatherServiceError(
+      `Open-Meteo response is missing weather data for ${capital.capital}`,
+    );
   }
 
   return {
@@ -244,10 +246,7 @@ function parseCurrentConditions(current: OpenMeteoCurrent): WeatherCurrentCondit
     showersMm: readNumber(current.showers, "current.showers"),
     cloudCoverPercent: readNumber(current.cloud_cover, "current.cloud_cover"),
     windSpeedKmh: readNumber(current.wind_speed_10m, "current.wind_speed_10m"),
-    windDirectionDegrees: readNumber(
-      current.wind_direction_10m,
-      "current.wind_direction_10m",
-    ),
+    windDirectionDegrees: readNumber(current.wind_direction_10m, "current.wind_direction_10m"),
     windGustsKmh: readNumber(current.wind_gusts_10m, "current.wind_gusts_10m"),
     weatherCode,
     weatherDescription: describeWeatherCode(weatherCode),
@@ -334,7 +333,9 @@ function readNumberArray(value: unknown, fieldName: string): readonly number[] {
 function readArrayValue(values: readonly number[], index: number, fieldName: string): number {
   const value = values[index];
   if (value === undefined) {
-    throw new WeatherServiceError(`Open-Meteo response field ${fieldName} is missing index ${index}`);
+    throw new WeatherServiceError(
+      `Open-Meteo response field ${fieldName} is missing index ${index}`,
+    );
   }
   return value;
 }

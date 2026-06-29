@@ -1,6 +1,10 @@
 import { useAnimatedNumber } from "@/lib/use-animated-number";
 
-interface MixEntry { label: string; pct: number; color: string }
+interface MixEntry {
+  label: string;
+  pct: number;
+  color: string;
+}
 
 export function AIRecommendationPanel({
   mix,
@@ -14,11 +18,11 @@ export function AIRecommendationPanel({
   carbonReduction?: number;
 }) {
   const defaults: MixEntry[] = [
-    { label: "Solar",   pct: 32, color: "oklch(0.85 0.21 145)" },
-    { label: "Wind",    pct: 24, color: "oklch(0.82 0.14 200)" },
+    { label: "Solar", pct: 32, color: "oklch(0.85 0.21 145)" },
+    { label: "Wind", pct: 24, color: "oklch(0.82 0.14 200)" },
     { label: "Battery", pct: 14, color: "oklch(0.72 0.18 245)" },
-    { label: "Gas",     pct: 18, color: "oklch(0.82 0.17 75)" },
-    { label: "Coal",    pct: 12, color: "oklch(0.55 0.04 260)" },
+    { label: "Gas", pct: 18, color: "oklch(0.82 0.17 75)" },
+    { label: "Coal", pct: 12, color: "oklch(0.55 0.04 260)" },
   ];
   const data = mix ?? defaults;
   const rel = useAnimatedNumber(reliability);
@@ -40,7 +44,11 @@ export function AIRecommendationPanel({
       {/* Stacked bar */}
       <div className="flex h-3 rounded-full overflow-hidden mb-3 border border-[oklch(0.72_0.18_245/0.2)]">
         {data.map((d) => (
-          <div key={d.label} style={{ width: `${d.pct}%`, background: d.color }} className="h-full" />
+          <div
+            key={d.label}
+            style={{ width: `${d.pct}%`, background: d.color }}
+            className="h-full"
+          />
         ))}
       </div>
       <div className="grid grid-cols-5 gap-2 mb-5">
@@ -64,13 +72,32 @@ export function AIRecommendationPanel({
   );
 }
 
-function Outcome({ label, value, suffix, tone }: { label: string; value: string; suffix: string; tone: "accent" | "primary" | "secondary" }) {
-  const color = tone === "accent" ? "oklch(0.85 0.21 145)" : tone === "primary" ? "oklch(0.72 0.18 245)" : "oklch(0.82 0.14 200)";
+function Outcome({
+  label,
+  value,
+  suffix,
+  tone,
+}: {
+  label: string;
+  value: string;
+  suffix: string;
+  tone: "accent" | "primary" | "secondary";
+}) {
+  const color =
+    tone === "accent"
+      ? "oklch(0.85 0.21 145)"
+      : tone === "primary"
+        ? "oklch(0.72 0.18 245)"
+        : "oklch(0.82 0.14 200)";
   return (
     <div className="rounded-lg p-3 bg-[oklch(0.16_0.028_260/0.7)] border border-[oklch(0.72_0.18_245/0.12)]">
       <div className="hud-label mb-1">{label}</div>
-      <div className="text-xl font-display tabular-nums" style={{ color, textShadow: `0 0 18px ${color}55` }}>
-        {value}{suffix}
+      <div
+        className="text-xl font-display tabular-nums"
+        style={{ color, textShadow: `0 0 18px ${color}55` }}
+      >
+        {value}
+        {suffix}
       </div>
     </div>
   );
