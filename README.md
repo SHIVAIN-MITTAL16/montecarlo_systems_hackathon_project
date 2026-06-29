@@ -293,3 +293,40 @@ MIT License
 
 ⭐ If you like this project, consider giving it a star.
 
+## 📸 Screenshots
+
+### Dashboard
+
+![Dashboard](screenshots/dashboard.png)
+
+---
+
+### AI Control Room
+
+![Control Room](screenshots/ai-control-room.png)
+
+---
+
+### India Digital Twin
+
+![India Map](screenshots/India-map.png)
+
+---
+
+### Texas 2021 Replay
+
+![Texas Replay](screenshots/texas-replay.png)
+
+---
+
+### Monte Carlo Simulation
+
+![Simulation](screenshots/monte-carlo.png)
+
+---
+
+### Crisis Lab Simulation
+
+![Simulation](screenshots/crisis-lab.png)
+
+
