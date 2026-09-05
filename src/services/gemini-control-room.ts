@@ -1,9 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestIP } from "@tanstack/start-server-core";
-import { getNationalGridSnapshot } from "./grid-snapshot";
-import { optimizeGridDispatch } from "./grid-optimizer";
 import { askGeminiGridAssistant, type PolarStationContext } from "./gemini-service";
-import { runMonteCarloSimulation } from "./monte-carlo";
 import { getPolarStationState, optimizePolarDispatch, runPolarRiskSimulation, type PolarScenario } from "./polar-station";
 
 const WINDOW_MS = 60_000;
@@ -24,9 +21,6 @@ export const askGeminiControlRoom = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     enforceRateLimit();
     return withTimeout(async () => {
-      const snapshot = await getNationalGridSnapshot();
-      const monteCarlo = runMonteCarloSimulation(snapshot);
-      const optimizer = optimizeGridDispatch({ snapshot, monteCarlo });
       const scenario = detectPolarScenario(data.question);
       const station = getPolarStationState(scenario);
       const risk = runPolarRiskSimulation(station);
@@ -38,7 +32,7 @@ export const askGeminiControlRoom = createServerFn({ method: "POST" })
         optimizedRisk,
       };
 
-      return askGeminiGridAssistant({ question: data.question, snapshot, monteCarlo, optimizer, polarStation });
+      return askGeminiGridAssistant({ question: data.question, polarStation });
     }, TIMEOUT_MS);
   });
 
