@@ -1,332 +1,110 @@
-# ⚡ Grid Sentinel AI
+# ⚡ Grid Sentinel AI — SIH26061
 
-> **AI-Powered National Power Grid Digital Twin with Weather Intelligence, Monte Carlo Risk Simulation, Grid Optimization, Texas 2021 Replay and Gemini AI Decision Support**
+> **Weather-Aware AI Digital Twin for Resilient Energy Management of Polar Research Stations**
 
----
+Grid Sentinel AI is a decision-support prototype aligned to **Smart India Hackathon 2026 Problem Statement SIH26061: AI-Driven Smart Energy Management System for Polar Research Stations**.
 
-## Overview
+## What the prototype does
 
-Grid Sentinel AI is an intelligent power-grid digital twin that helps operators monitor, analyze and optimize a national electricity grid in real time.
+A polar research station is an isolated microgrid. Its critical loads depend on renewable generation, battery storage and backup generation while weather can change both supply and demand.
 
-The platform combines:
+Grid Sentinel AI models that station as a **Digital Twin** and closes the loop:
 
-- 🌤 Live weather forecasting
-- ⚡ National grid monitoring
-- 🎲 Monte Carlo risk simulation
-- 🤖 Gemini-powered AI assistant
-- 📈 Renewable generation forecasting
-- 🧠 Grid optimization
-- 🇮🇳 India Digital Twin
-- 🇺🇸 Texas Winter Storm Uri 2021 replay
+**Weather → Forecast → Monte Carlo Simulation → Risk Quantification → Constrained Dispatch → Explainable Recommendation**
 
-The objective is to improve grid resilience, reduce blackout risk and assist operators in making informed decisions during both normal and emergency operating conditions.
+### Polar Station Digital Twin
 
----
+The `/digital-twin` experience is the primary SIH deployment view. It models:
 
-# Key Features
+- ☀️ Solar PV
+- 🌬️ Wind generation
+- 🔋 Battery storage and reserve
+- ⛽ Backup generator
+- ⚡ Critical/flexible station demand
+- ❄️ Polar weather stress
 
-## 🇮🇳 India Digital Twin
+### Weather stress scenarios
 
-- National grid visualization
-- State-wise monitoring
-- Live demand estimation
-- Renewable generation tracking
-- Reserve margin calculation
-- Grid health monitoring
+Operators can inject nominal weather, a polar storm, a low-light event or wind derating and immediately see the effect on the simulated station.
 
----
+### Probabilistic risk engine
 
-## 🌦 Weather Intelligence
+The browser prototype runs **5,000 deterministic stochastic scenarios per case**. It varies renewable availability, demand and initial battery state, then calculates shortage probability, Expected Unserved Energy (EUE), minimum state of charge and generator usage.
 
-- Weather-driven renewable forecasting
-- Solar prediction
-- Wind prediction
-- Weather impact analysis
-- Cloud cover modelling
+### Optimization / dispatch recommendation
 
----
+The prototype compares a baseline policy with a reserve-aware dispatch policy. The recommendation prioritizes renewable energy, protects a battery reserve for critical loads and prepares backup generation for residual deficits.
 
-## 🎲 Monte Carlo Simulation
+### AI control room
 
-Thousands of probabilistic scenarios are simulated to estimate:
+The AI layer is intended to interpret verified simulation/optimization outputs for operators. It should not be treated as the numerical calculation engine.
 
-- Blackout probability
-- Loss of Load Probability (LOLP)
-- Expected Unserved Energy (EUE)
-- Renewable uncertainty
-- Demand uncertainty
+## Research direction
 
----
+The project was initially developed as a national-grid resilience prototype. For SIH26061, the primary deployment surface has been changed to the **Polar Research Station Digital Twin**, while the existing national-grid and Texas replay modules remain available as research/reference modules.
 
-## ⚙ Grid Optimization
+This distinction is deliberate: historical grid failures motivate the resilience methodology, but the SIH demo is centered on the isolated polar-station energy problem.
 
-Optimization engine recommends:
+## Technical architecture
 
-- Renewable dispatch
-- Grid balancing
-- Reserve allocation
-- Demand management
-- Reliability improvements
-
----
-
-## 🤖 Gemini AI Control Room
-
-Natural language interface for grid operators.
-
-Example questions:
-
-- What is today's blackout probability?
-- Which state has the highest demand?
-- What is the reserve margin?
-- Compare today's grid with Texas 2021.
-- What was the replay peak demand?
-- Which hour had the highest blackout probability?
-- What recommendations do you have?
-
----
-
-## 🇺🇸 Texas 2021 Replay
-
-Historical replay based on benchmark datasets.
-
-Includes:
-
-- ERCOT demand
-- Generation
-- Weather observations
-- Emergency alerts
-- Replay statistics
-- Peak demand
-- Peak renewable generation
-- Worst blackout period
-
-Operators can compare current grid conditions against Winter Storm Uri.
-
----
-
-# System Architecture
-
+```text
+Polar Weather / Scenario Inputs
+            │
+            ▼
+   Renewable + Load Model
+            │
+            ▼
+     Digital Twin State
+            │
+            ▼
+  Monte Carlo Risk Engine
+       (5,000 futures)
+            │
+            ├── Shortage Probability
+            ├── Expected Unserved Energy
+            └── Battery Reserve Risk
+            │
+            ▼
+   Constrained Dispatch Logic
+            │
+            ▼
+ Explainable Operator Recommendation
 ```
 
-                NOAA Weather
-                      │
-                      ▼
-             Weather Forecast Engine
-                      │
-                      ▼
-             Renewable Forecast Model
-                      │
-                      ▼
-      Live National Grid Digital Twin
-                      │
-      ┌───────────────┼──────────────┐
-      ▼               ▼              ▼
+## Technology
 
-Monte Carlo Grid Optimizer Texas Replay
-Simulation
-
-      └───────────────┼──────────────┘
-                      ▼
-             Gemini AI Control Room
-                      ▼
-              Operator Dashboard
-
-```
-
----
-
-# Technology Stack
-
-## Frontend
-
-- React
-- TypeScript
-- Vite
+- React + TypeScript
+- TanStack Router
 - Tailwind CSS
+- Lucide icons
+- Monte Carlo stochastic simulation
+- Gemini-based decision-support modules
 
-## Backend Logic
+## Main routes
 
-- TypeScript
-- Gemini API
-- Monte Carlo Simulation
+- `/` — Command Center
+- `/digital-twin` — **Polar Research Station Digital Twin (SIH26061 primary demo)**
+- `/simulation` — Crisis Lab / stress testing
+- `/control-room` — AI Control Room
+- `/texas-2021` — historical research replay
 
-## Data
+## Important validation note
 
-- ERCOT benchmark datasets
-- NOAA weather observations
-- Texas replay datasets
+The current Polar Station model is a **research/proof-of-concept simulation**, not a utility-grade EMS/SCADA dispatch controller. Numerical performance claims should be based on reproducible experiments and clearly labeled as simulated results.
 
----
-
-# Project Structure
-
-```
-
-src/
-
-├── components/
-├── data/
-│   └── texas-uri/
-├── hooks/
-├── routes/
-├── services/
-│   ├── gemini-service.ts
-│   ├── gemini-control-room.ts
-│   ├── monte-carlo.ts
-│   ├── weather-service.ts
-│   ├── texas-replay.ts
-│   ├── texas-replay-data.ts
-│   └── grid-optimizer.ts
-
-```
-
----
-
-# AI Pipeline
-
-Weather
-↓
-
-Renewable Forecast
-
-↓
-
-National Grid Snapshot
-
-↓
-
-Monte Carlo Simulation
-
-↓
-
-Grid Optimization
-
-↓
-
-Texas Replay Comparison
-
-↓
-
-Gemini AI Response
-
----
-
-# Example Operator Queries
-
-```
-
-What is today's reserve margin?
-
-Compare today's grid with Texas 2021.
-
-What hour had the highest blackout probability?
-
-Which state currently has the highest demand?
-
-Show renewable generation.
-
-Recommend actions to reduce blackout risk.
-
-```
-
----
-
-# Installation
+## Development
 
 ```bash
 git clone https://github.com/SHIVAIN-MITTAL16/montecarlo_systems_hackathon_project.git
-
-cd futuregrid-ai-main
-
+cd montecarlo_systems_hackathon_project/Downloads/futuregrid-ai-main/futuregrid-ai-main
 npm install
-
 npm run dev
 ```
 
----
+## SIH alignment
 
-# Environment Variables
-
-Create:
-
-```
-.env.local
-```
-
-```
-GEMINI_API_KEY=YOUR_API_KEY
-```
-
----
-
-# Future Enhancements
-
-- Battery dispatch optimization
-- PMU integration
-- SCADA connectivity
-- Multi-country digital twins
-- Reinforcement Learning dispatch
-- Carbon emission optimization
-
----
-
-# Team
-
-MonteCarlo Systems
-
-- Shivain Mittal
-- Charvi Manola
-- Jiya Anand
-- Parth Arora
-
----
-
-# License
-
-MIT License
-
----
-
-
-⭐ If you like this project, consider giving it a star.
-
-⭐ If you like this project, consider giving it a star.
-
-## 📸 Screenshots
-
-### Dashboard
-
-![Dashboard](screenshots/dashboard.png)
-
----
-
-### AI Control Room
-
-![Control Room](screenshots/ai-control-room.png)
-
----
-
-### India Digital Twin
-
-![India Map](screenshots/India-map.png)
-
----
-
-### Texas 2021 Replay
-
-![Texas Replay](screenshots/texas-replay.png)
-
----
-
-### Monte Carlo Simulation
-
-![Simulation](screenshots/monte-carlo.png)
-
----
-
-### Crisis Lab Simulation
-
-![Simulation](screenshots/crisis-lab.png)
-
-
+**PS ID:** SIH26061  
+**PS:** AI-Driven Smart Energy Management System for Polar Research Stations  
+**Theme:** Miscellaneous  
+**Category:** Software  
+**Team:** MonteCarlo Systems
